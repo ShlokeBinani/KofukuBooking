@@ -4,6 +4,7 @@ interface VoiceRecognitionHook {
   isListening: boolean;
   transcript: string;
   isSupported: boolean;
+  hasNetworkError: boolean;
   startListening: () => void;
   stopListening: () => void;
   resetTranscript: () => void;
@@ -19,6 +20,7 @@ declare global {
 export function useVoiceRecognition(): VoiceRecognitionHook {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
+  const [hasNetworkError, setHasNetworkError] = useState(false);
   const [recognition, setRecognition] = useState<any | null>(null);
 
   const isSupported = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
@@ -61,12 +63,15 @@ export function useVoiceRecognition(): VoiceRecognitionHook {
       console.error('Speech recognition error:', event.error);
       if (event.error === 'not-allowed') {
         alert('Microphone access denied. Please allow microphone access to use voice commands.');
+        setIsListening(false);
       } else if (event.error === 'network') {
         console.warn('Network error in speech recognition - voice commands may not work properly');
+        setHasNetworkError(true);
         // Don't stop listening on network errors, as it might recover
         return;
+      } else {
+        setIsListening(false);
       }
-      setIsListening(false);
     };
 
     setRecognition(recognitionInstance);
@@ -101,6 +106,7 @@ export function useVoiceRecognition(): VoiceRecognitionHook {
     isListening,
     transcript,
     isSupported,
+    hasNetworkError,
     startListening,
     stopListening,
     resetTranscript,

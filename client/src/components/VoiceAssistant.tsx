@@ -8,7 +8,7 @@ interface VoiceAssistantProps {
 }
 
 export function VoiceAssistant({ onVoiceCommand }: VoiceAssistantProps) {
-  const { isListening, transcript, isSupported, startListening, stopListening, resetTranscript } = useVoiceRecognition();
+  const { isListening, transcript, isSupported, hasNetworkError, startListening, stopListening, resetTranscript } = useVoiceRecognition();
   const [isActive, setIsActive] = useState(false);
 
   useEffect(() => {
@@ -54,10 +54,20 @@ export function VoiceAssistant({ onVoiceCommand }: VoiceAssistantProps) {
       stopListening();
       setIsActive(false);
     } else {
-      startListening();
-      // When manually activated, treat it as "Hey Kofi"
-      setIsActive(true);
-      speak("Hello! I'm listening. How can I help you book a room?");
+      if (hasNetworkError) {
+        // Provide fallback text input mode
+        const command = prompt("Voice recognition has network issues. Please type your command (e.g., 'book conference room 1'):");
+        if (command) {
+          setIsActive(true);
+          processVoiceCommand(command);
+          setIsActive(false);
+        }
+      } else {
+        startListening();
+        // When manually activated, treat it as "Hey Kofi"
+        setIsActive(true);
+        speak("Hello! I'm listening. How can I help you book a room?");
+      }
     }
   };
 
@@ -74,15 +84,27 @@ export function VoiceAssistant({ onVoiceCommand }: VoiceAssistantProps) {
       <Button
         onClick={toggleListening}
         className={`relative p-3 rounded-full transition-all duration-300 ${
-          isListening 
+          hasNetworkError
+            ? 'bg-yellow-500 hover:bg-yellow-600'
+            : isListening 
             ? 'bg-green-500 hover:bg-green-600' 
             : 'bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900'
         }`}
         size="lg"
+        title={hasNetworkError ? "Voice recognition has network issues - click for text input" : "Click to activate voice commands or say 'Hey Kofi'"}
       >
-        {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-        {isListening && (
+        {hasNetworkError ? (
+          <span className="text-xs font-bold">ABC</span>
+        ) : isListening ? (
+          <MicOff className="w-6 h-6" />
+        ) : (
+          <Mic className="w-6 h-6" />
+        )}
+        {isListening && !hasNetworkError && (
           <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+        )}
+        {hasNetworkError && (
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-400 rounded-full"></div>
         )}
       </Button>
 
@@ -102,11 +124,18 @@ export function VoiceAssistant({ onVoiceCommand }: VoiceAssistantProps) {
               ))}
             </div>
             <div>
-              <p className="text-blue-800 font-medium">Kofi Listening...</p>
-              <p className="text-blue-600 text-sm">
-                {isActive ? 'Speak your command' : 'Say "Hey Kofi" or click to activate'}
+              <p className="text-blue-800 font-medium">
+                {hasNetworkError ? 'Voice Network Issue' : 'Kofi Listening...'}
               </p>
-              {transcript && (
+              <p className="text-blue-600 text-sm">
+                {hasNetworkError 
+                  ? 'Click button for text input mode'
+                  : isActive 
+                  ? 'Speak your command' 
+                  : 'Say "Hey Kofi" or click to activate'
+                }
+              </p>
+              {transcript && !hasNetworkError && (
                 <p className="text-blue-700 text-sm mt-1 italic">"{transcript}"</p>
               )}
             </div>
