@@ -61,6 +61,10 @@ export function useVoiceRecognition(): VoiceRecognitionHook {
       console.error('Speech recognition error:', event.error);
       if (event.error === 'not-allowed') {
         alert('Microphone access denied. Please allow microphone access to use voice commands.');
+      } else if (event.error === 'network') {
+        console.warn('Network error in speech recognition - voice commands may not work properly');
+        // Don't stop listening on network errors, as it might recover
+        return;
       }
       setIsListening(false);
     };

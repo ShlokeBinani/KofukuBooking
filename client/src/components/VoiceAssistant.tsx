@@ -16,12 +16,13 @@ export function VoiceAssistant({ onVoiceCommand }: VoiceAssistantProps) {
       setIsActive(true);
       speak("Hello! I'm Kofi, your room booking assistant. How can I help you?");
       resetTranscript();
+      return;
     }
     
     if (isActive && transcript && !transcript.toLowerCase().includes('hey kofi') && transcript.trim() !== '') {
       processVoiceCommand(transcript);
     }
-  }, [transcript, isActive, resetTranscript]);
+  }, [transcript, isActive]);
 
   const speak = (text: string) => {
     if ('speechSynthesis' in window) {
@@ -54,6 +55,9 @@ export function VoiceAssistant({ onVoiceCommand }: VoiceAssistantProps) {
       setIsActive(false);
     } else {
       startListening();
+      // When manually activated, treat it as "Hey Kofi"
+      setIsActive(true);
+      speak("Hello! I'm listening. How can I help you book a room?");
     }
   };
 
@@ -99,7 +103,9 @@ export function VoiceAssistant({ onVoiceCommand }: VoiceAssistantProps) {
             </div>
             <div>
               <p className="text-blue-800 font-medium">Kofi Listening...</p>
-              <p className="text-blue-600 text-sm">Say "Hey Kofi" to activate</p>
+              <p className="text-blue-600 text-sm">
+                {isActive ? 'Speak your command' : 'Say "Hey Kofi" or click to activate'}
+              </p>
               {transcript && (
                 <p className="text-blue-700 text-sm mt-1 italic">"{transcript}"</p>
               )}

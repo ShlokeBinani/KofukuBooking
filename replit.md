@@ -120,8 +120,30 @@ The Kofuku Room Booking System is a modern React TypeScript application designed
 
 ## Changelog
 
-- July 01, 2025. Initial setup
+- July 01, 2025. Initial setup with voice and text-enabled room booking system
+- July 01, 2025. Added royal blue/beige metallic theme with custom SVG logo
+- July 01, 2025. Implemented real-time availability checking with dynamic status indicators
+- July 01, 2025. Enhanced voice recognition with click activation and network error handling
+
+## Recent Changes
+
+### Voice Assistant Updates
+- Fixed voice recognition to work with both "Hey Kofi" activation and manual click activation
+- Added improved error handling for network issues in speech recognition
+- Enhanced user feedback with dynamic status messages
+
+### Real-time Availability System
+- Rooms now show live availability status when date/time is selected
+- Added visual indicators: green checkmark (available), red X (unavailable), spinning clock (checking)
+- Automatic availability checking when booking form fields change
+
+### Visual Design Improvements
+- Created custom metallic SVG logo with royal blue gradient and beige accents
+- Applied consistent royal blue/beige color scheme throughout the application
+- Added floating animations and glass morphism effects
+- Enhanced landing page with improved visual hierarchy
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+Theme preference: Royal blue and beige with metallic accents and smooth animations.
