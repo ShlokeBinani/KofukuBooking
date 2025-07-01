@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,7 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CalendarCheck, Users, DoorOpen } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { CalendarCheck, Users, DoorOpen, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { ConflictDialog } from './ConflictDialog';
 import { useToast } from '@/hooks/use-toast';
 
@@ -39,14 +40,15 @@ interface ConflictData {
 export function BookingForm() {
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
   const [conflictData, setConflictData] = useState<ConflictData | null>(null);
+  const [availabilityStatus, setAvailabilityStatus] = useState<{ [key: number]: 'available' | 'unavailable' | 'checking' }>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: rooms = [] } = useQuery({
+  const { data: rooms = [] } = useQuery<any[]>({
     queryKey: ['/api/rooms'],
   });
 
-  const { data: teams = [] } = useQuery({
+  const { data: teams = [] } = useQuery<any[]>({
     queryKey: ['/api/teams'],
   });
 
@@ -58,6 +60,43 @@ export function BookingForm() {
   });
 
   const bookingType = form.watch('bookingType');
+  const selectedDate = form.watch('date');
+  const selectedStartTime = form.watch('startTime');
+  const selectedEndTime = form.watch('endTime');
+
+  // Check availability when date/time changes
+  useEffect(() => {
+    if (selectedDate && selectedStartTime && selectedEndTime && Array.isArray(rooms) && rooms.length > 0) {
+      checkRoomAvailability();
+    }
+  }, [selectedDate, selectedStartTime, selectedEndTime, rooms]);
+
+  const checkRoomAvailability = async () => {
+    if (!selectedDate || !selectedStartTime || !selectedEndTime) return;
+
+    const roomsArray = Array.isArray(rooms) ? rooms : [];
+    
+    for (const room of roomsArray) {
+      setAvailabilityStatus(prev => ({ ...prev, [room.id]: 'checking' }));
+      
+      try {
+        const response = await apiRequest('POST', '/api/bookings/check-availability', {
+          roomId: room.id,
+          date: selectedDate,
+          startTime: selectedStartTime,
+          endTime: selectedEndTime
+        });
+        const result = await response.json();
+        
+        setAvailabilityStatus(prev => ({ 
+          ...prev, 
+          [room.id]: result.available ? 'available' : 'unavailable' 
+        }));
+      } catch (error) {
+        setAvailabilityStatus(prev => ({ ...prev, [room.id]: 'available' }));
+      }
+    }
+  };
 
   const checkAvailabilityMutation = useMutation({
     mutationFn: async (data: BookingFormData) => {
@@ -120,39 +159,69 @@ export function BookingForm() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {rooms.map((room: any) => (
-              <div
-                key={room.id}
-                onClick={() => handleRoomSelect(room.id)}
-                className={`p-4 border-2 rounded-xl cursor-pointer transition-all duration-300 ${
-                  selectedRoomId === room.id
-                    ? 'border-blue-500 bg-blue-50/50'
-                    : 'border-gray-300 hover:border-blue-500'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                      {room.name.includes('Conference') ? (
-                        <Users className="text-blue-600 w-6 h-6" />
-                      ) : (
-                        <DoorOpen className="text-blue-600 w-6 h-6" />
+            {Array.isArray(rooms) && rooms.map((room: any) => {
+              const status = availabilityStatus[room.id];
+              const isAvailable = status === 'available';
+              const isChecking = status === 'checking';
+              const isUnavailable = status === 'unavailable';
+              
+              return (
+                <div
+                  key={room.id}
+                  onClick={() => handleRoomSelect(room.id)}
+                  className={`p-4 border-2 rounded-xl cursor-pointer transition-all duration-300 ${
+                    selectedRoomId === room.id
+                      ? 'border-blue-500 bg-blue-50/50'
+                      : isUnavailable
+                      ? 'border-red-300 bg-red-50/30'
+                      : 'border-gray-300 hover:border-blue-500'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                        isUnavailable ? 'bg-red-100' : 'bg-blue-100'
+                      }`}>
+                        {room.name.includes('Conference') ? (
+                          <Users className={`w-6 h-6 ${isUnavailable ? 'text-red-600' : 'text-blue-600'}`} />
+                        ) : (
+                          <DoorOpen className={`w-6 h-6 ${isUnavailable ? 'text-red-600' : 'text-blue-600'}`} />
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-blue-800">{room.name}</h4>
+                        <p className="text-blue-600 text-sm">Capacity: {room.capacity} people</p>
+                        <div className="flex items-center space-x-2">
+                          {isChecking ? (
+                            <>
+                              <Clock className="w-4 h-4 text-yellow-500 animate-spin" />
+                              <p className="text-yellow-600 text-sm font-medium">Checking...</p>
+                            </>
+                          ) : isAvailable ? (
+                            <>
+                              <CheckCircle className="w-4 h-4 text-green-500" />
+                              <p className="text-green-600 text-sm font-medium">Available</p>
+                            </>
+                          ) : isUnavailable ? (
+                            <>
+                              <XCircle className="w-4 h-4 text-red-500" />
+                              <p className="text-red-600 text-sm font-medium">Unavailable</p>
+                            </>
+                          ) : (
+                            <p className="text-gray-500 text-sm">Select date & time</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="w-6 h-6 border-2 border-gray-400 rounded-full flex items-center justify-center">
+                      {selectedRoomId === room.id && (
+                        <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
                       )}
                     </div>
-                    <div>
-                      <h4 className="font-semibold text-blue-800">{room.name}</h4>
-                      <p className="text-blue-600 text-sm">Capacity: {room.capacity} people</p>
-                      <p className="text-green-600 text-sm font-medium">Available</p>
-                    </div>
-                  </div>
-                  <div className="w-6 h-6 border-2 border-gray-400 rounded-full flex items-center justify-center">
-                    {selectedRoomId === room.id && (
-                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                    )}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
 

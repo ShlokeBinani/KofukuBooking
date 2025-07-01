@@ -12,10 +12,42 @@ export default function Landing() {
       <div className="container mx-auto px-4 py-16">
         {/* Hero Section */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl mb-6 shadow-lg animate-pulse">
-            <Building className="text-white w-10 h-10" />
+          <div className="inline-flex items-center justify-center mb-6">
+            <svg width="80" height="80" viewBox="0 0 100 100" className="floating-animation">
+              <defs>
+                <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#1e40af" />
+                  <stop offset="50%" stopColor="#3b82f6" />
+                  <stop offset="100%" stopColor="#60a5fa" />
+                </linearGradient>
+                <linearGradient id="metallicGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#fefce8" />
+                  <stop offset="50%" stopColor="#f3f4f6" />
+                  <stop offset="100%" stopColor="#e5e7eb" />
+                </linearGradient>
+              </defs>
+              
+              {/* Outer metallic ring */}
+              <circle cx="50" cy="50" r="45" fill="url(#metallicGradient)" stroke="#d1d5db" strokeWidth="2"/>
+              
+              {/* Inner blue circle */}
+              <circle cx="50" cy="50" r="35" fill="url(#logoGradient)"/>
+              
+              {/* K letter in center */}
+              <g fill="white" transform="translate(50,50)">
+                <rect x="-12" y="-15" width="4" height="30"/>
+                <rect x="-8" y="-3" width="15" height="3" transform="rotate(-30)"/>
+                <rect x="-8" y="0" width="15" height="3" transform="rotate(30)"/>
+              </g>
+              
+              {/* Decorative elements */}
+              <circle cx="25" cy="25" r="3" fill="url(#metallicGradient)" opacity="0.7"/>
+              <circle cx="75" cy="25" r="2" fill="url(#metallicGradient)" opacity="0.7"/>
+              <circle cx="25" cy="75" r="2" fill="url(#metallicGradient)" opacity="0.7"/>
+              <circle cx="75" cy="75" r="3" fill="url(#metallicGradient)" opacity="0.7"/>
+            </svg>
           </div>
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-slate-600 to-slate-800 bg-clip-text text-transparent mb-4">
+          <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 bg-clip-text text-transparent mb-4 metallic-text">
             Kofuku Technologies
           </h1>
           <p className="text-xl text-blue-600 font-medium mb-8">

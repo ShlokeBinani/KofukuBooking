@@ -12,16 +12,16 @@ export function VoiceAssistant({ onVoiceCommand }: VoiceAssistantProps) {
   const [isActive, setIsActive] = useState(false);
 
   useEffect(() => {
-    if (transcript.toLowerCase().includes('hey kofi')) {
+    if (transcript && transcript.toLowerCase().includes('hey kofi')) {
       setIsActive(true);
       speak("Hello! I'm Kofi, your room booking assistant. How can I help you?");
       resetTranscript();
     }
     
-    if (isActive && transcript && !transcript.toLowerCase().includes('hey kofi')) {
+    if (isActive && transcript && !transcript.toLowerCase().includes('hey kofi') && transcript.trim() !== '') {
       processVoiceCommand(transcript);
     }
-  }, [transcript, isActive]);
+  }, [transcript, isActive, resetTranscript]);
 
   const speak = (text: string) => {
     if ('speechSynthesis' in window) {
@@ -58,7 +58,11 @@ export function VoiceAssistant({ onVoiceCommand }: VoiceAssistantProps) {
   };
 
   if (!isSupported) {
-    return null;
+    return (
+      <div className="text-xs text-gray-500 bg-gray-100 px-3 py-2 rounded-lg">
+        Voice not supported
+      </div>
+    );
   }
 
   return (

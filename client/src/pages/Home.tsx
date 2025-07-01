@@ -134,11 +134,29 @@ export default function Home() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <div className="flex items-center">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg flex items-center justify-center mr-3">
-                  <Building className="text-white w-5 h-5" />
-                </div>
+                <svg width="40" height="40" viewBox="0 0 100 100" className="mr-3">
+                  <defs>
+                    <linearGradient id="logoGradientSmall" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#1e40af" />
+                      <stop offset="50%" stopColor="#3b82f6" />
+                      <stop offset="100%" stopColor="#60a5fa" />
+                    </linearGradient>
+                    <linearGradient id="metallicGradientSmall" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#fefce8" />
+                      <stop offset="50%" stopColor="#f3f4f6" />
+                      <stop offset="100%" stopColor="#e5e7eb" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="50" cy="50" r="45" fill="url(#metallicGradientSmall)" stroke="#d1d5db" strokeWidth="2"/>
+                  <circle cx="50" cy="50" r="35" fill="url(#logoGradientSmall)"/>
+                  <g fill="white" transform="translate(50,50)">
+                    <rect x="-12" y="-15" width="4" height="30"/>
+                    <rect x="-8" y="-3" width="15" height="3" transform="rotate(-30)"/>
+                    <rect x="-8" y="0" width="15" height="3" transform="rotate(30)"/>
+                  </g>
+                </svg>
                 <div>
-                  <h1 className="text-xl font-bold bg-gradient-to-r from-slate-600 to-slate-800 bg-clip-text text-transparent">
+                  <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
                     Kofuku
                   </h1>
                   <p className="text-xs text-blue-600">Room Booking</p>

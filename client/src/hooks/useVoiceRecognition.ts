@@ -9,10 +9,17 @@ interface VoiceRecognitionHook {
   resetTranscript: () => void;
 }
 
+declare global {
+  interface Window {
+    SpeechRecognition: typeof SpeechRecognition;
+    webkitSpeechRecognition: typeof SpeechRecognition;
+  }
+}
+
 export function useVoiceRecognition(): VoiceRecognitionHook {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
+  const [recognition, setRecognition] = useState<any | null>(null);
 
   const isSupported = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
 
@@ -26,25 +33,44 @@ export function useVoiceRecognition(): VoiceRecognitionHook {
     recognitionInstance.interimResults = true;
     recognitionInstance.lang = 'en-US';
 
-    recognitionInstance.onresult = (event) => {
-      const current = event.resultIndex;
-      const transcript = event.results[current][0].transcript;
-      setTranscript(transcript);
+    recognitionInstance.onresult = (event: any) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      setTranscript(finalTranscript || interimTranscript);
+    };
+
+    recognitionInstance.onstart = () => {
+      setIsListening(true);
     };
 
     recognitionInstance.onend = () => {
       setIsListening(false);
     };
 
-    recognitionInstance.onerror = (event) => {
+    recognitionInstance.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error);
+      if (event.error === 'not-allowed') {
+        alert('Microphone access denied. Please allow microphone access to use voice commands.');
+      }
       setIsListening(false);
     };
 
     setRecognition(recognitionInstance);
 
     return () => {
-      recognitionInstance.stop();
+      if (recognitionInstance) {
+        recognitionInstance.stop();
+      }
     };
   }, [isSupported]);
 
