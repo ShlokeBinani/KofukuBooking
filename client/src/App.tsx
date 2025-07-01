@@ -6,10 +6,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/Landing";
 import Home from "@/pages/Home";
+import AdminDashboard from "@/pages/AdminDashboard";
 import NotFound from "@/pages/not-found";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   return (
     <Switch>
@@ -17,7 +18,14 @@ function Router() {
         <Route path="/" component={Landing} />
       ) : (
         <>
-          <Route path="/" component={Home} />
+          {user?.role === 'admin' ? (
+            <>
+              <Route path="/" component={AdminDashboard} />
+              <Route path="/employee" component={Home} />
+            </>
+          ) : (
+            <Route path="/" component={Home} />
+          )}
         </>
       )}
       <Route component={NotFound} />

@@ -7,6 +7,7 @@ import {
   index,
   serial,
   boolean,
+  integer,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -31,7 +32,8 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role").notNull().default("employee"), // employee or head
+  role: varchar("role").notNull().default("employee"), // employee or admin
+  isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -64,6 +66,19 @@ export const priorityRequests = pgTable("priority_requests", {
   conflictBookingId: serial("conflict_booking_id").notNull(),
   reason: text("reason").notNull(),
   status: varchar("status").notNull().default("pending"), // pending, approved, rejected
+  reviewedBy: varchar("reviewed_by"), // admin who reviewed
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Admin notifications table
+export const adminNotifications = pgTable("admin_notifications", {
+  id: serial("id").primaryKey(),
+  type: varchar("type").notNull(), // "priority_request", "new_user", etc.
+  title: varchar("title").notNull(),
+  message: text("message").notNull(),
+  relatedId: integer("related_id"), // ID of related entity (priority request, user, etc.)
+  isRead: boolean("is_read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -88,6 +103,9 @@ export type PriorityRequest = typeof priorityRequests.$inferSelect;
 
 export type InsertTeam = typeof teams.$inferInsert;
 export type Team = typeof teams.$inferSelect;
+
+export type InsertAdminNotification = typeof adminNotifications.$inferInsert;
+export type AdminNotification = typeof adminNotifications.$inferSelect;
 
 export const insertBookingSchema = createInsertSchema(bookings).omit({
   id: true,

@@ -4,6 +4,7 @@ import {
   bookings,
   priorityRequests,
   teams,
+  adminNotifications,
   type User,
   type UpsertUser,
   type Room,
@@ -14,6 +15,8 @@ import {
   type InsertPriorityRequest,
   type Team,
   type InsertTeam,
+  type AdminNotification,
+  type InsertAdminNotification,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte } from "drizzle-orm";
@@ -46,6 +49,21 @@ export interface IStorage {
   // Team operations
   getTeams(): Promise<Team[]>;
   initializeTeams(): Promise<void>;
+  
+  // Admin operations
+  getAllUsers(): Promise<User[]>;
+  updateUserRole(userId: string, role: string): Promise<boolean>;
+  updateUserStatus(userId: string, isActive: boolean): Promise<boolean>;
+  
+  // Admin notification operations
+  createAdminNotification(notification: InsertAdminNotification): Promise<AdminNotification>;
+  getAdminNotifications(): Promise<AdminNotification[]>;
+  markNotificationRead(notificationId: number): Promise<boolean>;
+  
+  // Admin room management
+  addRoom(room: InsertRoom): Promise<Room>;
+  updateRoom(roomId: number, updates: Partial<Room>): Promise<boolean>;
+  removeRoom(roomId: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -202,6 +220,77 @@ export class DatabaseStorage implements IStorage {
   private timeToMinutes(time: string): number {
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;
+  }
+
+  // Admin operations
+  async getAllUsers(): Promise<User[]> {
+    return db.select().from(users);
+  }
+
+  async updateUserRole(userId: string, role: string): Promise<boolean> {
+    try {
+      await db.update(users).set({ role }).where(eq(users.id, userId));
+      return true;
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      return false;
+    }
+  }
+
+  async updateUserStatus(userId: string, isActive: boolean): Promise<boolean> {
+    try {
+      await db.update(users).set({ isActive }).where(eq(users.id, userId));
+      return true;
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      return false;
+    }
+  }
+
+  // Admin notification operations
+  async createAdminNotification(notification: InsertAdminNotification): Promise<AdminNotification> {
+    const [created] = await db.insert(adminNotifications).values(notification).returning();
+    return created;
+  }
+
+  async getAdminNotifications(): Promise<AdminNotification[]> {
+    return db.select().from(adminNotifications).orderBy(adminNotifications.createdAt);
+  }
+
+  async markNotificationRead(notificationId: number): Promise<boolean> {
+    try {
+      await db.update(adminNotifications).set({ isRead: true }).where(eq(adminNotifications.id, notificationId));
+      return true;
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      return false;
+    }
+  }
+
+  // Admin room management
+  async addRoom(room: InsertRoom): Promise<Room> {
+    const [created] = await db.insert(rooms).values(room).returning();
+    return created;
+  }
+
+  async updateRoom(roomId: number, updates: Partial<Room>): Promise<boolean> {
+    try {
+      await db.update(rooms).set(updates).where(eq(rooms.id, roomId));
+      return true;
+    } catch (error) {
+      console.error('Error updating room:', error);
+      return false;
+    }
+  }
+
+  async removeRoom(roomId: number): Promise<boolean> {
+    try {
+      await db.update(rooms).set({ isActive: false }).where(eq(rooms.id, roomId));
+      return true;
+    } catch (error) {
+      console.error('Error removing room:', error);
+      return false;
+    }
   }
 }
 

@@ -124,6 +124,8 @@ The Kofuku Room Booking System is a modern React TypeScript application designed
 - July 01, 2025. Added royal blue/beige metallic theme with custom SVG logo
 - July 01, 2025. Implemented real-time availability checking with dynamic status indicators
 - July 01, 2025. Enhanced voice recognition with click activation and network error handling
+- July 01, 2025. Implemented admin/employee role system with dedicated admin dashboard
+- July 01, 2025. Changed theme from blue/white to blue/beige metallic color scheme
 
 ## Recent Changes
 
@@ -137,7 +139,14 @@ The Kofuku Room Booking System is a modern React TypeScript application designed
 - Added visual indicators: green checkmark (available), red X (unavailable), spinning clock (checking)
 - Automatic availability checking when booking form fields change
 
+### Admin/Employee System
+- Implemented role-based authentication with automatic admin assignment for specific email
+- Created comprehensive admin dashboard with user management, room management, and notifications
+- Added admin routes for managing users, rooms, and system settings
+- Implemented admin notifications for new user registrations and priority requests
+
 ### Visual Design Improvements
+- Changed theme from blue/white to blue/beige metallic color scheme
 - Created custom metallic SVG logo with royal blue gradient and beige accents
 - Applied consistent royal blue/beige color scheme throughout the application
 - Added floating animations and glass morphism effects

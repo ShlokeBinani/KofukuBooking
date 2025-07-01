@@ -57,13 +57,33 @@ function updateUserSession(
 async function upsertUser(
   claims: any,
 ) {
+  // Check if this is the main admin email
+  const adminEmail = "shlokebinani@gmail.com"; // Main admin email
+  const isAdmin = claims["email"] === adminEmail;
+  
   await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
+    role: isAdmin ? "admin" : "employee",
+    isActive: true,
   });
+  
+  // Create admin notification for new user registration (except for admin)
+  if (!isAdmin) {
+    try {
+      await storage.createAdminNotification({
+        type: "new_user",
+        title: "New User Registered",
+        message: `${claims["first_name"]} ${claims["last_name"]} (${claims["email"]}) has joined the system`,
+        relatedId: null,
+      });
+    } catch (error) {
+      console.error('Error creating admin notification:', error);
+    }
+  }
 }
 
 export async function setupAuth(app: Express) {

@@ -3,25 +3,25 @@
 @tailwind utilities;
 
 :root {
-  --background: hsl(0, 0%, 100%);
-  --foreground: hsl(20, 14.3%, 4.1%);
-  --muted: hsl(60, 4.8%, 95.9%);
-  --muted-foreground: hsl(25, 5.3%, 44.7%);
-  --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(20, 14.3%, 4.1%);
-  --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(20, 14.3%, 4.1%);
-  --border: hsl(20, 5.9%, 90%);
-  --input: hsl(20, 5.9%, 90%);
-  --primary: hsl(220, 91%, 54%);
-  --primary-foreground: hsl(210, 100%, 98%);
-  --secondary: hsl(60, 4.8%, 95.9%);
-  --secondary-foreground: hsl(24, 9.8%, 10%);
-  --accent: hsl(60, 4.8%, 95.9%);
-  --accent-foreground: hsl(24, 9.8%, 10%);
+  --background: hsl(39, 100%, 97%); /* Light beige background */
+  --foreground: hsl(220, 85%, 15%); /* Dark blue text */
+  --muted: hsl(35, 30%, 85%);
+  --muted-foreground: hsl(220, 25%, 45%);
+  --popover: hsl(39, 100%, 97%);
+  --popover-foreground: hsl(220, 85%, 15%);
+  --card: hsl(39, 50%, 95%); /* Warm beige cards */
+  --card-foreground: hsl(220, 85%, 15%);
+  --border: hsl(35, 25%, 80%); /* Beige borders */
+  --input: hsl(35, 25%, 90%); /* Light beige inputs */
+  --primary: hsl(220, 85%, 35%); /* Royal blue primary */
+  --primary-foreground: hsl(39, 100%, 97%);
+  --secondary: hsl(35, 30%, 85%); /* Light beige secondary */
+  --secondary-foreground: hsl(220, 85%, 25%);
+  --accent: hsl(35, 50%, 80%); /* Medium beige accent */
+  --accent-foreground: hsl(220, 85%, 25%);
   --destructive: hsl(0, 84.2%, 60.2%);
-  --destructive-foreground: hsl(60, 9.1%, 97.8%);
-  --ring: hsl(20, 14.3%, 4.1%);
+  --destructive-foreground: hsl(39, 100%, 97%);
+  --ring: hsl(220, 85%, 35%); /* Royal blue focus ring */
   --radius: 0.5rem;
 }
 

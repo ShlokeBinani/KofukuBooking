@@ -200,6 +200,177 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin routes - require admin role
+  app.get('/api/admin/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (currentUser?.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.post('/api/admin/users/:userId/role', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (currentUser?.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      
+      const { userId: targetUserId } = req.params;
+      const { role } = req.body;
+      
+      const success = await storage.updateUserRole(targetUserId, role);
+      if (success) {
+        res.json({ message: 'User role updated successfully' });
+      } else {
+        res.status(500).json({ message: 'Failed to update user role' });
+      }
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ message: "Failed to update user role" });
+    }
+  });
+
+  app.post('/api/admin/users/:userId/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (currentUser?.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      
+      const { userId: targetUserId } = req.params;
+      const { isActive } = req.body;
+      
+      const success = await storage.updateUserStatus(targetUserId, isActive);
+      if (success) {
+        res.json({ message: 'User status updated successfully' });
+      } else {
+        res.status(500).json({ message: 'Failed to update user status' });
+      }
+    } catch (error) {
+      console.error("Error updating user status:", error);
+      res.status(500).json({ message: "Failed to update user status" });
+    }
+  });
+
+  // Admin notifications
+  app.get('/api/admin/notifications', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (currentUser?.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      
+      const notifications = await storage.getAdminNotifications();
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.post('/api/admin/notifications/:id/read', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (currentUser?.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      
+      const notificationId = parseInt(req.params.id);
+      const success = await storage.markNotificationRead(notificationId);
+      
+      if (success) {
+        res.json({ message: 'Notification marked as read' });
+      } else {
+        res.status(500).json({ message: 'Failed to mark notification as read' });
+      }
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  // Admin room management
+  app.post('/api/admin/rooms', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (currentUser?.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      
+      const room = await storage.addRoom(req.body);
+      res.json(room);
+    } catch (error) {
+      console.error("Error adding room:", error);
+      res.status(500).json({ message: "Failed to add room" });
+    }
+  });
+
+  app.put('/api/admin/rooms/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (currentUser?.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      
+      const roomId = parseInt(req.params.id);
+      const success = await storage.updateRoom(roomId, req.body);
+      
+      if (success) {
+        res.json({ message: 'Room updated successfully' });
+      } else {
+        res.status(500).json({ message: 'Failed to update room' });
+      }
+    } catch (error) {
+      console.error("Error updating room:", error);
+      res.status(500).json({ message: "Failed to update room" });
+    }
+  });
+
+  app.delete('/api/admin/rooms/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (currentUser?.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      
+      const roomId = parseInt(req.params.id);
+      const success = await storage.removeRoom(roomId);
+      
+      if (success) {
+        res.json({ message: 'Room removed successfully' });
+      } else {
+        res.status(500).json({ message: 'Failed to remove room' });
+      }
+    } catch (error) {
+      console.error("Error removing room:", error);
+      res.status(500).json({ message: "Failed to remove room" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
