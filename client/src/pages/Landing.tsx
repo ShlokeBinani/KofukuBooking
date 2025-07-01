@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Building, Calendar, Users, Mic } from 'lucide-react';
+import { Building, Calendar, Users, DoorOpen } from 'lucide-react';
 
 export default function Landing() {
   const handleLogin = () => {
@@ -71,9 +71,9 @@ export default function Landing() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
           {[
             {
-              icon: <Mic className="w-8 h-8" />,
-              title: 'Voice Control',
-              description: 'Book rooms with simple voice commands using "Hey Kofi"'
+              icon: <DoorOpen className="w-8 h-8" />,
+              title: 'Easy Booking',
+              description: 'Simple and intuitive room booking interface'
             },
             {
               icon: <Calendar className="w-8 h-8" />,

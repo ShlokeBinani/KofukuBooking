@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Building, CalendarCheck, Clock, History, Users, DoorOpen, X } from 'lucide-react';
 import { BookingForm } from '@/components/BookingForm';
-import { VoiceAssistant } from '@/components/VoiceAssistant';
+
 
 export default function Home() {
   const { user, isLoading } = useAuth();
@@ -74,25 +74,7 @@ export default function Home() {
     window.location.href = '/api/logout';
   };
 
-  const handleVoiceCommand = (command: string) => {
-    const lowerCommand = command.toLowerCase();
-    
-    if (lowerCommand.includes('conference room')) {
-      setActiveTab('booking');
-      toast({
-        title: "Voice Command",
-        description: "Switching to booking form for Conference Room 1",
-      });
-    }
-    
-    if (lowerCommand.includes('cabin')) {
-      setActiveTab('booking');
-      toast({
-        title: "Voice Command",
-        description: "Switching to booking form for Cabin 1",
-      });
-    }
-  };
+
 
   const handleCancelBooking = (bookingId: number) => {
     cancelBookingMutation.mutate(bookingId);
@@ -165,9 +147,6 @@ export default function Home() {
             </div>
 
             <div className="flex items-center space-x-4">
-              {/* Voice Assistant */}
-              <VoiceAssistant onVoiceCommand={handleVoiceCommand} />
-
               {/* User Menu */}
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-blue-200 rounded-full flex items-center justify-center">
