@@ -68,19 +68,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isAvailable) {
         res.json({ available: true });
       } else {
-        const conflictingBooking = await storage.getConflictingBooking(roomId, date, startTime, endTime);
-        const conflictUser = conflictingBooking ? await storage.getUser(conflictingBooking.userId) : null;
+        // Get detailed conflicting bookings with user information
+        const conflictingBookings = await storage.getConflictingBookingsWithUsers(roomId, date, startTime, endTime);
+        const rooms = await storage.getRooms();
+        const room = rooms.find(r => r.id === roomId);
         
         res.json({ 
-          available: false, 
-          conflict: {
-            id: conflictingBooking?.id,
-            room: roomId === 1 ? 'Conference Room 1' : 'Cabin 1',
-            bookedBy: conflictUser ? `${conflictUser.firstName} ${conflictUser.lastName}` : 'Unknown User',
-            startTime: conflictingBooking?.startTime,
-            endTime: conflictingBooking?.endTime,
-            date: conflictingBooking?.date
-          }
+          available: false,
+          conflictingBookings: conflictingBookings,
+          conflict: conflictingBookings.length > 0 ? {
+            id: conflictingBookings[0].id,
+            room: room?.name || 'Unknown Room',
+            bookedBy: `${conflictingBookings[0].user.firstName} ${conflictingBookings[0].user.lastName}`,
+            startTime: conflictingBookings[0].startTime,
+            endTime: conflictingBookings[0].endTime,
+            date: conflictingBookings[0].date
+          } : null
         });
       }
     } catch (error) {
@@ -157,33 +160,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Priority request routes
-  app.post('/api/bookings/request-priority', isAuthenticated, async (req: any, res) => {
+  app.post('/api/priority-requests', isAuthenticated, async (req: any, res) => {
     try {
       const requesterId = req.user.id;
-      const requestData = { ...req.body, requesterId };
+      const { conflictBookingId, reason, newBookingData } = req.body;
       
-      const validatedData = insertPriorityRequestSchema.parse(requestData);
-      const priorityRequest = await storage.createPriorityRequest(validatedData);
+      const priorityRequest = await storage.createPriorityRequest({
+        requesterId,
+        conflictBookingId,
+        reason,
+        status: 'pending'
+      });
       
-      // Get the conflicting booking and its owner
+      // Create admin notification
+      await storage.createAdminNotification({
+        type: 'priority_request',
+        title: 'New Priority Booking Request',
+        message: `${req.user.firstName} ${req.user.lastName} has requested priority booking`,
+        relatedId: priorityRequest.id,
+        isRead: false
+      });
+      
+      // Get the conflicting booking and its owner for email notification
       const conflictingBooking = await storage.getBookings().then(bookings => 
-        bookings.find(b => b.id === validatedData.conflictBookingId)
+        bookings.find(b => b.id === conflictBookingId)
       );
       
       if (conflictingBooking) {
         const conflictOwner = await storage.getUser(conflictingBooking.userId);
-        const requester = await storage.getUser(requesterId);
+        const rooms = await storage.getRooms();
+        const room = rooms.find(r => r.id === conflictingBooking.roomId);
         
-        // Send priority request email to department heads
-        // For now, we'll send to the room owner - in a real system, this would go to department heads
-        if (conflictOwner?.email && requester) {
+        if (conflictOwner?.email) {
           await sendPriorityRequest(conflictOwner.email, {
-            requesterName: `${requester.firstName} ${requester.lastName}`,
-            roomName: conflictingBooking.roomId === 1 ? 'Conference Room 1' : 'Cabin 1',
+            requesterName: `${req.user.firstName} ${req.user.lastName}`,
+            roomName: room?.name || 'Unknown Room',
             date: conflictingBooking.date,
             startTime: conflictingBooking.startTime,
             endTime: conflictingBooking.endTime,
-            reason: validatedData.reason
+            reason: reason
           });
         }
       }
@@ -192,6 +207,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating priority request:", error);
       res.status(500).json({ message: "Failed to create priority request" });
+    }
+  });
+
+  // Admin - Get all priority requests
+  app.get('/api/admin/priority-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const currentUser = await storage.getUser(userId);
+      
+      if (currentUser?.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      
+      const requests = await storage.getPriorityRequests();
+      
+      // Enrich with user and booking details
+      const enrichedRequests = await Promise.all(requests.map(async (request) => {
+        const requester = await storage.getUser(request.requesterId);
+        const bookings = await storage.getBookings();
+        const conflictBooking = bookings.find(b => b.id === request.conflictBookingId);
+        const conflictOwner = conflictBooking ? await storage.getUser(conflictBooking.userId) : null;
+        const rooms = await storage.getRooms();
+        const room = conflictBooking ? rooms.find(r => r.id === conflictBooking.roomId) : null;
+        
+        return {
+          ...request,
+          requester: requester ? {
+            firstName: requester.firstName,
+            lastName: requester.lastName,
+            email: requester.email
+          } : null,
+          conflictBooking: conflictBooking ? {
+            ...conflictBooking,
+            room: room?.name || 'Unknown Room',
+            owner: conflictOwner ? {
+              firstName: conflictOwner.firstName,
+              lastName: conflictOwner.lastName,
+              email: conflictOwner.email
+            } : null
+          } : null
+        };
+      }));
+      
+      res.json(enrichedRequests);
+    } catch (error) {
+      console.error("Error fetching priority requests:", error);
+      res.status(500).json({ message: "Failed to fetch priority requests" });
+    }
+  });
+
+  // Admin - Approve/Reject priority request
+  app.post('/api/admin/priority-requests/:id/:action', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const currentUser = await storage.getUser(userId);
+      
+      if (currentUser?.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      
+      const requestId = parseInt(req.params.id);
+      const action = req.params.action; // 'approve' or 'reject'
+      
+      if (!['approve', 'reject'].includes(action)) {
+        return res.status(400).json({ message: 'Invalid action' });
+      }
+      
+      const requests = await storage.getPriorityRequests();
+      const request = requests.find(r => r.id === requestId);
+      
+      if (!request) {
+        return res.status(404).json({ message: 'Priority request not found' });
+      }
+      
+      const status = action === 'approve' ? 'approved' : 'rejected';
+      await storage.updatePriorityRequestStatus(requestId, status);
+      
+      if (action === 'approve') {
+        // Transfer the booking - cancel original and create new one
+        const { newBookingData } = req.body;
+        if (newBookingData) {
+          await storage.transferBooking(request.conflictBookingId, request.requesterId, newBookingData);
+        }
+      }
+      
+      res.json({ message: `Priority request ${action}d successfully` });
+    } catch (error) {
+      console.error(`Error ${req.params.action}ing priority request:`, error);
+      res.status(500).json({ message: `Failed to ${req.params.action} priority request` });
     }
   });
 
@@ -363,6 +467,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error removing room:", error);
       res.status(500).json({ message: "Failed to remove room" });
+    }
+  });
+
+  // Admin team management
+  app.post('/api/admin/teams', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const currentUser = await storage.getUser(userId);
+      
+      if (currentUser?.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      
+      const team = await storage.addTeam(req.body);
+      res.json(team);
+    } catch (error) {
+      console.error("Error adding team:", error);
+      res.status(500).json({ message: "Failed to add team" });
+    }
+  });
+
+  app.put('/api/admin/teams/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const currentUser = await storage.getUser(userId);
+      
+      if (currentUser?.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      
+      const teamId = parseInt(req.params.id);
+      const success = await storage.updateTeam(teamId, req.body);
+      
+      if (success) {
+        res.json({ message: 'Team updated successfully' });
+      } else {
+        res.status(500).json({ message: 'Failed to update team' });
+      }
+    } catch (error) {
+      console.error("Error updating team:", error);
+      res.status(500).json({ message: "Failed to update team" });
+    }
+  });
+
+  app.delete('/api/admin/teams/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const currentUser = await storage.getUser(userId);
+      
+      if (currentUser?.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      
+      const teamId = parseInt(req.params.id);
+      const success = await storage.removeTeam(teamId);
+      
+      if (success) {
+        res.json({ message: 'Team removed successfully' });
+      } else {
+        res.status(500).json({ message: 'Failed to remove team' });
+      }
+    } catch (error) {
+      console.error("Error removing team:", error);
+      res.status(500).json({ message: "Failed to remove team" });
     }
   });
 

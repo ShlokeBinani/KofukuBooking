@@ -44,6 +44,9 @@ export function BookingForm() {
   const [availabilityStatus, setAvailabilityStatus] = useState<{ [key: number]: 'available' | 'unavailable' | 'checking' }>({});
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [hoveredRoom, setHoveredRoom] = useState<number | null>(null);
+  const [showPriorityDialog, setShowPriorityDialog] = useState(false);
+  const [priorityReason, setPriorityReason] = useState('');
+  const [conflictingBookings, setConflictingBookings] = useState<any[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -152,29 +155,72 @@ export function BookingForm() {
     },
   });
 
-  const onSubmit = async (data: BookingFormData) => {
-    // Check if selected room is currently unavailable
-    const roomStatus = availabilityStatus[data.roomId];
-    if (roomStatus === 'unavailable') {
+  // Priority booking request mutation
+  const priorityRequestMutation = useMutation({
+    mutationFn: async (data: {
+      conflictBookingId: number;
+      reason: string;
+      newBookingData: BookingFormData;
+    }) => {
+      const response = await apiRequest('POST', '/api/priority-requests', data);
+      return response;
+    },
+    onSuccess: () => {
       toast({
-        title: "Room Unavailable",
-        description: "The selected room is not available for the chosen time slot. Please select a different room or time.",
+        title: "Priority Request Submitted! ⚡",
+        description: "Your priority booking request has been sent to admins for review.",
+      });
+      setShowPriorityDialog(false);
+      setPriorityReason('');
+      form.reset();
+      setSelectedRoomId(null);
+      setAvailabilityStatus({});
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Request Failed",
+        description: error.message || "Failed to submit priority request",
         variant: "destructive",
       });
-      return;
-    }
+    },
+  });
 
+  const onSubmit = async (data: BookingFormData) => {
     try {
       const result = await checkAvailabilityMutation.mutateAsync(data);
       
       if (result.available) {
         await createBookingMutation.mutateAsync(data);
       } else {
-        setConflictData(result.conflict);
+        // Store conflicting bookings for priority request
+        if (result.conflictingBookings && result.conflictingBookings.length > 0) {
+          setConflictingBookings(result.conflictingBookings);
+          setShowPriorityDialog(true);
+        } else {
+          setConflictData(result.conflict);
+        }
       }
     } catch (error) {
       console.error('Booking error:', error);
     }
+  };
+
+  const handlePriorityRequest = () => {
+    if (conflictingBookings.length === 0 || !priorityReason.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide a reason for your priority request.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const formData = form.getValues();
+    priorityRequestMutation.mutate({
+      conflictBookingId: conflictingBookings[0].id,
+      reason: priorityReason,
+      newBookingData: formData,
+    });
   };
 
   const handleRoomSelect = (roomId: number) => {
@@ -657,6 +703,91 @@ export function BookingForm() {
         onClose={() => setConflictData(null)}
         conflictData={conflictData}
       />
+
+      {/* Priority Booking Dialog */}
+      <AnimatePresence>
+        {showPriorityDialog && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+            onClick={() => setShowPriorityDialog(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              className="bg-white/95 backdrop-blur-xl rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl border border-white/20"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <motion.div
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full flex items-center justify-center"
+                >
+                  <Zap className="w-6 h-6 text-white" />
+                </motion.div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800">Priority Booking Request</h3>
+                  <p className="text-sm text-gray-600">Request admin intervention for this time slot</p>
+                </div>
+              </div>
+
+              {conflictingBookings.length > 0 && (
+                <div className="mb-4 p-3 bg-red-50 rounded-lg border border-red-200">
+                  <p className="text-sm font-medium text-red-800 mb-2">Conflicting Booking:</p>
+                  <div className="text-sm text-red-700">
+                    <p><strong>Booked by:</strong> {conflictingBookings[0].user?.firstName} {conflictingBookings[0].user?.lastName}</p>
+                    <p><strong>Time:</strong> {conflictingBookings[0].startTime} - {conflictingBookings[0].endTime}</p>
+                    <p><strong>Purpose:</strong> {conflictingBookings[0].purpose}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="mb-4">
+                <Label htmlFor="priority-reason" className="text-gray-700 font-medium">
+                  Reason for Priority Request *
+                </Label>
+                <Textarea
+                  id="priority-reason"
+                  value={priorityReason}
+                  onChange={(e) => setPriorityReason(e.target.value)}
+                  placeholder="Explain why this booking should take priority (e.g., urgent client meeting, CEO request, etc.)"
+                  className="mt-2 bg-white/70 border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                  rows={4}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setShowPriorityDialog(false)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <Button
+                    onClick={handlePriorityRequest}
+                    disabled={priorityRequestMutation.isPending || !priorityReason.trim()}
+                    className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg relative overflow-hidden group"
+                  >
+                    {/* Button Shimmer Effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                    
+                    <Zap className="w-4 h-4 mr-2 relative z-10" />
+                    <span className="relative z-10">
+                      {priorityRequestMutation.isPending ? 'Submitting...' : 'Request Priority'}
+                    </span>
+                  </Button>
+                </motion.div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
