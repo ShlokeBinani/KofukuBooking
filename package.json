@@ -5,6 +5,7 @@
   "license": "MIT",
   "scripts": {
     "setup": "node setup.js",
+    "test-env": "node test-env.js",
     "dev": "cross-env NODE_ENV=development tsx server/index.ts",
     "dev:windows": "set NODE_ENV=development && tsx server/index.ts",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
