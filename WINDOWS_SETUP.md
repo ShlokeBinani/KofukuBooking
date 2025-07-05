@@ -4,14 +4,21 @@
 
 You're getting the `'NODE_ENV' is not recognized` error because Windows uses different environment variable syntax. 
 
-**Solution**: Install the `cross-env` package I just added:
+**Solutions**: Try these options in order:
 
 ```powershell
-# First, install the missing dependency
+# Option 1: Install cross-env package (recommended)
 npm install
-
-# Now run the dev server (will work on Windows)
 npm run dev
+
+# Option 2: If cross-env still doesn't work, use Windows-specific script
+npm run dev:windows
+
+# Option 3: Use PowerShell script directly
+.\dev.ps1
+
+# Option 4: Use batch file
+.\dev.bat
 ```
 
 ## Complete Windows Setup Steps
