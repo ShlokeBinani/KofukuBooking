@@ -38,6 +38,8 @@ export default function Home() {
     enabled: !!user,
   });
 
+  const bookingsArray = Array.isArray(bookings) ? bookings : [];
+
   const cancelBookingMutation = useMutation({
     mutationFn: async (bookingId: number) => {
       const response = await apiRequest('POST', `/api/bookings/cancel/${bookingId}`);
@@ -98,12 +100,12 @@ export default function Home() {
   }
 
   const now = new Date();
-  const futureBookings = bookings.filter((booking: any) => {
+  const futureBookings = bookingsArray.filter((booking: any) => {
     const bookingDate = new Date(`${booking.date} ${booking.startTime}`);
     return bookingDate > now && booking.status === 'confirmed';
   });
 
-  const pastBookings = bookings.filter((booking: any) => {
+  const pastBookings = bookingsArray.filter((booking: any) => {
     const bookingDate = new Date(`${booking.date} ${booking.startTime}`);
     return bookingDate <= now || booking.status === 'cancelled';
   });
