@@ -139,6 +139,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async checkAvailability(roomId: number, date: string, startTime: string, endTime: string): Promise<boolean> {
+    console.log(`Checking availability for Room ${roomId} on ${date} from ${startTime} to ${endTime}`);
+    
     const conflictingBookings = await db.select().from(bookings)
       .where(and(
         eq(bookings.roomId, roomId),
@@ -146,11 +148,16 @@ export class DatabaseStorage implements IStorage {
         eq(bookings.status, "confirmed")
       ));
 
+    console.log(`Found ${conflictingBookings.length} existing bookings for this room and date:`, conflictingBookings);
+
     for (const booking of conflictingBookings) {
       if (this.timeOverlaps(startTime, endTime, booking.startTime, booking.endTime)) {
+        console.log(`❌ CONFLICT FOUND: New booking ${startTime}-${endTime} overlaps with existing booking ${booking.startTime}-${booking.endTime}`);
         return false;
       }
     }
+    
+    console.log(`✅ No conflicts found - room is available`);
     return true;
   }
 
@@ -225,7 +232,16 @@ export class DatabaseStorage implements IStorage {
     const start2Minutes = this.timeToMinutes(start2);
     const end2Minutes = this.timeToMinutes(end2);
 
-    return start1Minutes < end2Minutes && end1Minutes > start2Minutes;
+    // Two time slots overlap if:
+    // - start1 is before end2 AND end1 is after start2
+    // This handles all overlap cases including exact matches
+    const overlaps = start1Minutes < end2Minutes && end1Minutes > start2Minutes;
+    
+    console.log(`Time overlap check: ${start1}-${end1} vs ${start2}-${end2}`, {
+      start1Minutes, end1Minutes, start2Minutes, end2Minutes, overlaps
+    });
+    
+    return overlaps;
   }
 
   private timeToMinutes(time: string): number {
