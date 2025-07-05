@@ -26,6 +26,8 @@ A modern room booking and management system built with React, Express.js, and Po
 - PostgreSQL 12+ running locally
 - Git
 
+**Windows Users**: See [WINDOWS_SETUP.md](WINDOWS_SETUP.md) for Windows-specific instructions!
+
 ## Local Setup
 
 ### 1. Clone the repository
@@ -217,6 +219,15 @@ If port 5000 is already in use, you can change it:
 ```bash
 export PORT=3000
 npm run dev
+```
+
+### Windows: NODE_ENV not recognized
+
+If you get `'NODE_ENV' is not recognized` error on Windows:
+
+```bash
+npm install  # Installs cross-env for Windows compatibility
+npm run dev  # Now works on Windows
 ```
 
 ### TypeScript errors
