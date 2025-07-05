@@ -345,7 +345,7 @@ export default function AdminDashboard() {
               <div className="text-2xl font-bold text-blue-900">{rooms.length}</div>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
 
         {/* User Management */}
         <Card className="bg-white/80 backdrop-blur-sm border-amber-200">
