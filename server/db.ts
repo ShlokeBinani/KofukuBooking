@@ -1,7 +1,9 @@
-import pkg from 'pg';
-const { Pool } = pkg;
+import { createRequire } from 'module';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from "@shared/schema";
+
+const require = createRequire(import.meta.url);
+const { Pool } = require('pg');
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
