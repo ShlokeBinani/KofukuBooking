@@ -1,7 +1,7 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
-import type { Express, RequestHandler } from "express";
+import type { Express, RequestHandler, Request, Response } from "express";
 import connectPg from "connect-pg-simple";
 import bcrypt from "bcryptjs";
 import { storage } from "./storage";
@@ -79,6 +79,11 @@ export async function setupAuth(app: Express) {
     } catch (error) {
       done(error);
     }
+  });
+
+  // Fallback GET route for old Replit auth redirects
+  app.get("/api/login", (req: any, res: any) => {
+    res.redirect('/');
   });
 
   // Login route
