@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,24 +8,15 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient as globalQueryClient } from '@/lib/queryClient';
-import { Bell, Users, Calendar, Settings, Plus, Trash2, UserCheck, UserX, Zap, Crown, BarChart3, Shield, TrendingUp, Activity, AlertTriangle, CheckCircle, XCircle, Clock, Edit, Building, Team as TeamIcon } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import type { User, Room, AdminNotification, Team } from '@shared/schema';
+import { Bell, Users, Calendar, Settings, Plus, Trash2, UserCheck, UserX } from 'lucide-react';
+import type { User, Room, AdminNotification } from '@shared/schema';
 
 export default function AdminDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isAddRoomOpen, setIsAddRoomOpen] = useState(false);
-  const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    setIsVisible(true);
-  }, []);
 
   // Fetch admin data
   const { data: users = [] } = useQuery<User[]>({
@@ -38,18 +29,6 @@ export default function AdminDashboard() {
 
   const { data: rooms = [] } = useQuery<Room[]>({
     queryKey: ['/api/rooms'],
-  });
-
-  const { data: teams = [] } = useQuery<Team[]>({
-    queryKey: ['/api/teams'],
-  });
-
-  const { data: priorityRequests = [] } = useQuery<any[]>({
-    queryKey: ['/api/admin/priority-requests'],
-  });
-
-  const { data: bookings = [] } = useQuery<any[]>({
-    queryKey: ['/api/bookings'],
   });
 
   // Mutations
@@ -124,188 +103,36 @@ export default function AdminDashboard() {
     },
   });
 
-  // Team Management Mutations
-  const addTeamMutation = useMutation({
-    mutationFn: async (teamData: { name: string }) => {
-      const response = await fetch('/api/admin/teams', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(teamData),
-      });
-      if (!response.ok) throw new Error('Failed to add team');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/teams'] });
-      setIsAddTeamOpen(false);
-      toast({ title: 'Success ✨', description: 'Team added successfully' });
-    },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to add team', variant: 'destructive' });
-    },
-  });
-
-  const removeTeamMutation = useMutation({
-    mutationFn: async (teamId: number) => {
-      const response = await fetch(`/api/admin/teams/${teamId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) throw new Error('Failed to remove team');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/teams'] });
-      toast({ title: 'Success ✨', description: 'Team removed successfully' });
-    },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to remove team', variant: 'destructive' });
-    },
-  });
-
-  // Priority Request Mutations
-  const approvePriorityRequestMutation = useMutation({
-    mutationFn: async ({ requestId, newBookingData }: { requestId: number, newBookingData: any }) => {
-      const response = await fetch(`/api/admin/priority-requests/${requestId}/approve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newBookingData }),
-      });
-      if (!response.ok) throw new Error('Failed to approve request');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/priority-requests'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/bookings'] });
-      toast({ title: 'Success ⚡', description: 'Priority request approved! Booking transferred.' });
-    },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to approve request', variant: 'destructive' });
-    },
-  });
-
-  const rejectPriorityRequestMutation = useMutation({
-    mutationFn: async (requestId: number) => {
-      const response = await fetch(`/api/admin/priority-requests/${requestId}/reject`, {
-        method: 'POST',
-      });
-      if (!response.ok) throw new Error('Failed to reject request');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/priority-requests'] });
-      toast({ title: 'Request Rejected', description: 'Priority request has been rejected.' });
-    },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to reject request', variant: 'destructive' });
-    },
-  });
-
-  // Computed stats
   const activeUsers = users.filter(user => user.isActive);
   const admins = users.filter(user => user.role === 'admin');
   const unreadNotifications = notifications.filter(n => !n.isRead);
-  const pendingRequests = priorityRequests.filter((req: any) => req.status === 'pending');
-  const todaysBookings = bookings.filter((booking: any) => {
-    const today = new Date().toISOString().split('T')[0];
-    return booking.date === today;
-  });
 
   return (
-    <>
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          className="absolute inset-0 bg-gradient-to-br from-blue-400/5 via-purple-400/5 to-cyan-400/5"
-          animate={{
-            background: [
-              "linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(147, 51, 234, 0.05), rgba(6, 182, 212, 0.05))",
-              "linear-gradient(315deg, rgba(147, 51, 234, 0.05), rgba(6, 182, 212, 0.05), rgba(59, 130, 246, 0.05))",
-              "linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(147, 51, 234, 0.05), rgba(6, 182, 212, 0.05))"
-            ]
-          }}
-          transition={{ duration: 10, repeat: Infinity }}
-        />
-        
-        {/* Floating admin orbs */}
-        <motion.div
-          className="absolute top-1/4 right-1/4 w-20 h-20 bg-gradient-to-br from-purple-400/10 to-blue-400/10 rounded-full blur-xl"
-          animate={{
-            scale: [1, 1.3, 1],
-            opacity: [0.3, 0.6, 0.3],
-            x: [-5, 5, -5],
-            y: [-5, 5, -5],
-          }}
-          transition={{ duration: 6, repeat: Infinity }}
-        />
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-blue-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-blue-900">Admin Dashboard</h1>
+            <p className="text-blue-700 mt-2">Manage users, rooms, and system settings</p>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Badge variant="secondary" className="text-blue-800">
+              <Bell className="w-4 h-4 mr-1" />
+              {unreadNotifications.length} unread
+            </Badge>
+            <Button
+              onClick={() => window.location.href = '/api/logout'}
+              variant="outline"
+              className="text-red-600 border-red-600 hover:bg-red-50"
+            >
+              Logout
+            </Button>
+          </div>
+        </div>
 
-      <div className="min-h-screen relative z-10 p-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 20 }}
-          transition={{ duration: 0.8 }}
-          className="max-w-7xl mx-auto space-y-8"
-        >
-          {/* Enhanced Header */}
-          <motion.div
-            initial={{ x: -50, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="flex items-center justify-between"
-          >
-            <div className="flex items-center gap-4">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                className="w-16 h-16 bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center shadow-xl"
-              >
-                <Crown className="w-8 h-8 text-white" />
-              </motion.div>
-              <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                  Admin Command Center
-                </h1>
-                <p className="text-gray-600 mt-2 flex items-center gap-2">
-                  <Shield className="w-4 h-4" />
-                  Complete system management & analytics
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <motion.div whileHover={{ scale: 1.05 }}>
-                <Badge variant="secondary" className="text-purple-800 bg-purple-100 px-3 py-2">
-                  <Bell className="w-4 h-4 mr-1" />
-                  {unreadNotifications.length} alerts
-                </Badge>
-              </motion.div>
-              {pendingRequests.length > 0 && (
-                <motion.div 
-                  whileHover={{ scale: 1.05 }}
-                  animate={{ scale: [1, 1.05, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  <Badge variant="destructive" className="px-3 py-2">
-                    <Zap className="w-4 h-4 mr-1" />
-                    {pendingRequests.length} priority
-                  </Badge>
-                </motion.div>
-              )}
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button
-                  onClick={() => window.location.href = '/api/logout'}
-                  variant="outline"
-                  className="text-red-600 border-red-600 hover:bg-red-50 relative overflow-hidden group"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-red-500/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                  Logout
-                </Button>
-              </motion.div>
-            </div>
-          </motion.div>
-
-          {/* Enhanced Stats Dashboard */}
-          <motion.div
-            initial={{ y: 50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
-          >
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card className="bg-white/80 backdrop-blur-sm border-amber-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-blue-800">Total Users</CardTitle>

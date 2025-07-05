@@ -40,9 +40,7 @@ export interface IStorage {
   getBookingsByDateRange(startDate: string, endDate: string): Promise<Booking[]>;
   checkAvailability(roomId: number, date: string, startTime: string, endTime: string): Promise<boolean>;
   getConflictingBooking(roomId: number, date: string, startTime: string, endTime: string): Promise<Booking | undefined>;
-  getConflictingBookingsWithUsers(roomId: number, date: string, startTime: string, endTime: string): Promise<any[]>;
   cancelBooking(bookingId: number, userId: string): Promise<boolean>;
-  transferBooking(fromBookingId: number, toUserId: string, newBookingData: any): Promise<boolean>;
   
   // Priority request operations
   createPriorityRequest(request: InsertPriorityRequest): Promise<PriorityRequest>;
@@ -52,9 +50,6 @@ export interface IStorage {
   // Team operations
   getTeams(): Promise<Team[]>;
   initializeTeams(): Promise<void>;
-  addTeam(team: InsertTeam): Promise<Team>;
-  updateTeam(teamId: number, updates: Partial<Team>): Promise<boolean>;
-  removeTeam(teamId: number): Promise<boolean>;
   
   // Admin operations
   getAllUsers(): Promise<User[]>;
@@ -182,71 +177,6 @@ export class DatabaseStorage implements IStorage {
     return undefined;
   }
 
-  async getConflictingBookingsWithUsers(roomId: number, date: string, startTime: string, endTime: string): Promise<any[]> {
-    const conflictingBookings = await db
-      .select({
-        id: bookings.id,
-        userId: bookings.userId,
-        roomId: bookings.roomId,
-        date: bookings.date,
-        startTime: bookings.startTime,
-        endTime: bookings.endTime,
-        purpose: bookings.purpose,
-        bookingType: bookings.bookingType,
-        team: bookings.team,
-        status: bookings.status,
-        createdAt: bookings.createdAt,
-        user: {
-          id: users.id,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          email: users.email,
-        }
-      })
-      .from(bookings)
-      .innerJoin(users, eq(bookings.userId, users.id))
-      .where(and(
-        eq(bookings.roomId, roomId),
-        eq(bookings.date, date),
-        eq(bookings.status, "confirmed")
-      ));
-
-    const conflicts = [];
-    for (const booking of conflictingBookings) {
-      if (this.timeOverlaps(startTime, endTime, booking.startTime, booking.endTime)) {
-        conflicts.push(booking);
-      }
-    }
-    return conflicts;
-  }
-
-  async transferBooking(fromBookingId: number, toUserId: string, newBookingData: any): Promise<boolean> {
-    try {
-      // Cancel the original booking
-      await db.update(bookings)
-        .set({ status: "cancelled" })
-        .where(eq(bookings.id, fromBookingId));
-
-      // Create the new booking
-      await db.insert(bookings).values({
-        userId: toUserId,
-        roomId: newBookingData.roomId,
-        date: newBookingData.date,
-        startTime: newBookingData.startTime,
-        endTime: newBookingData.endTime,
-        purpose: newBookingData.purpose,
-        bookingType: newBookingData.bookingType,
-        team: newBookingData.team,
-        status: "confirmed"
-      });
-
-      return true;
-    } catch (error) {
-      console.error('Error transferring booking:', error);
-      return false;
-    }
-  }
-
   async cancelBooking(bookingId: number, userId: string): Promise<boolean> {
     const result = await db.update(bookings)
       .set({ status: "cancelled" })
@@ -293,31 +223,6 @@ export class DatabaseStorage implements IStorage {
         { name: "HR" },
         { name: "Finance" },
       ]);
-    }
-  }
-
-  async addTeam(team: InsertTeam): Promise<Team> {
-    const [created] = await db.insert(teams).values(team).returning();
-    return created;
-  }
-
-  async updateTeam(teamId: number, updates: Partial<Team>): Promise<boolean> {
-    try {
-      await db.update(teams).set(updates).where(eq(teams.id, teamId));
-      return true;
-    } catch (error) {
-      console.error('Error updating team:', error);
-      return false;
-    }
-  }
-
-  async removeTeam(teamId: number): Promise<boolean> {
-    try {
-      await db.update(teams).set({ isActive: false }).where(eq(teams.id, teamId));
-      return true;
-    } catch (error) {
-      console.error('Error removing team:', error);
-      return false;
     }
   }
 
