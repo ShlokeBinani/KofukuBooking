@@ -21,10 +21,13 @@ export function getSession() {
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
+    name: 'kofuku.sid', // Custom session name
+    rolling: true, // Reset expiry on activity
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       maxAge: sessionTtl,
+      sameSite: 'lax',
     },
   });
 }
@@ -75,9 +78,15 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser(async (id: string, done) => {
     try {
       const user = await storage.getUserById(id);
+      if (!user) {
+        // User not found, clear the session
+        return done(null, false);
+      }
       done(null, user);
     } catch (error) {
-      done(error);
+      console.error('Error deserializing user:', error);
+      // Clear the session on error
+      done(null, false);
     }
   });
 
