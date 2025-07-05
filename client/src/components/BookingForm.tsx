@@ -71,9 +71,23 @@ export function BookingForm() {
     }
   }, [selectedDate, selectedStartTime, selectedEndTime, rooms]);
 
+  // Clear selected room if it becomes unavailable
+  useEffect(() => {
+    if (selectedRoomId && availabilityStatus[selectedRoomId] === 'unavailable') {
+      setSelectedRoomId(null);
+      form.setValue('roomId', 0);
+      toast({
+        title: "Room Selection Cleared",
+        description: "The selected room is no longer available for this time slot.",
+        variant: "destructive",
+      });
+    }
+  }, [availabilityStatus, selectedRoomId]);
+
   const checkRoomAvailability = async () => {
     if (!selectedDate || !selectedStartTime || !selectedEndTime) return;
 
+    console.log('Checking availability for:', { selectedDate, selectedStartTime, selectedEndTime });
     const roomsArray = Array.isArray(rooms) ? rooms : [];
     
     for (const room of roomsArray) {
@@ -88,11 +102,14 @@ export function BookingForm() {
         });
         const result = await response.json();
         
+        console.log(`Room ${room.name} (ID: ${room.id}) availability:`, result);
+        
         setAvailabilityStatus(prev => ({ 
           ...prev, 
           [room.id]: result.available ? 'available' : 'unavailable' 
         }));
       } catch (error) {
+        console.error(`Error checking availability for room ${room.id}:`, error);
         setAvailabilityStatus(prev => ({ ...prev, [room.id]: 'available' }));
       }
     }
@@ -129,6 +146,17 @@ export function BookingForm() {
   });
 
   const onSubmit = async (data: BookingFormData) => {
+    // Check if selected room is currently unavailable
+    const roomStatus = availabilityStatus[data.roomId];
+    if (roomStatus === 'unavailable') {
+      toast({
+        title: "Room Unavailable",
+        description: "The selected room is not available for the chosen time slot. Please select a different room or time.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const result = await checkAvailabilityMutation.mutateAsync(data);
       
@@ -157,6 +185,9 @@ export function BookingForm() {
               <CalendarCheck className="w-5 h-5" />
               Select a Room
             </CardTitle>
+            <p className="text-sm text-blue-600">
+              Choose a date and time first to see room availability
+            </p>
           </CardHeader>
           <CardContent className="space-y-4">
             {Array.isArray(rooms) && rooms.map((room: any) => {
@@ -168,13 +199,13 @@ export function BookingForm() {
               return (
                 <div
                   key={room.id}
-                  onClick={() => handleRoomSelect(room.id)}
-                  className={`p-4 border-2 rounded-xl cursor-pointer transition-all duration-300 ${
+                  onClick={() => isUnavailable ? null : handleRoomSelect(room.id)}
+                  className={`p-4 border-2 rounded-xl transition-all duration-300 ${
                     selectedRoomId === room.id
                       ? 'border-blue-500 bg-blue-50/50'
                       : isUnavailable
-                      ? 'border-red-300 bg-red-50/30'
-                      : 'border-gray-300 hover:border-blue-500'
+                      ? 'border-red-300 bg-red-50/30 cursor-not-allowed opacity-75'
+                      : 'border-gray-300 hover:border-blue-500 cursor-pointer'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -340,11 +371,23 @@ export function BookingForm() {
 
               <Button
                 type="submit"
-                disabled={checkAvailabilityMutation.isPending || createBookingMutation.isPending}
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white py-3 px-6 rounded-xl font-semibold transition-all duration-300"
+                disabled={
+                  checkAvailabilityMutation.isPending || 
+                  createBookingMutation.isPending ||
+                  !selectedRoomId ||
+                  (selectedRoomId && availabilityStatus[selectedRoomId] === 'unavailable')
+                }
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white py-3 px-6 rounded-xl font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <CalendarCheck className="w-5 h-5 mr-2" />
-                {checkAvailabilityMutation.isPending || createBookingMutation.isPending ? 'Booking...' : 'Book Room'}
+                {checkAvailabilityMutation.isPending || createBookingMutation.isPending 
+                  ? 'Booking...' 
+                  : !selectedRoomId 
+                  ? 'Select a Room' 
+                  : selectedRoomId && availabilityStatus[selectedRoomId] === 'unavailable'
+                  ? 'Room Unavailable'
+                  : 'Book Room'
+                }
               </Button>
             </form>
           </CardContent>

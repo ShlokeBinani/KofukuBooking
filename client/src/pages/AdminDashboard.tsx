@@ -121,6 +121,13 @@ export default function AdminDashboard() {
               <Bell className="w-4 h-4 mr-1" />
               {unreadNotifications.length} unread
             </Badge>
+            <Button
+              onClick={() => window.location.href = '/api/logout'}
+              variant="outline"
+              className="text-red-600 border-red-600 hover:bg-red-50"
+            >
+              Logout
+            </Button>
           </div>
         </div>
 
