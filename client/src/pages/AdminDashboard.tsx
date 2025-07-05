@@ -69,7 +69,7 @@ export default function AdminDashboard() {
   });
 
   const addRoomMutation = useMutation({
-    mutationFn: async (roomData: { name: string; capacity: number; description?: string }) => {
+    mutationFn: async (roomData: { name: string; capacity: number }) => {
       const response = await fetch('/api/admin/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -239,7 +239,6 @@ export default function AdminDashboard() {
                     addRoomMutation.mutate({
                       name: formData.get('name') as string,
                       capacity: parseInt(formData.get('capacity') as string),
-                      description: formData.get('description') as string,
                     });
                   }}
                   className="space-y-4"
@@ -252,10 +251,7 @@ export default function AdminDashboard() {
                     <Label htmlFor="capacity">Capacity</Label>
                     <Input id="capacity" name="capacity" type="number" required />
                   </div>
-                  <div>
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea id="description" name="description" />
-                  </div>
+
                   <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
                     Add Room
                   </Button>
@@ -271,9 +267,6 @@ export default function AdminDashboard() {
                     <div>
                       <h3 className="font-medium text-blue-900">{room.name}</h3>
                       <p className="text-sm text-blue-700">Capacity: {room.capacity}</p>
-                      {room.description && (
-                        <p className="text-xs text-blue-600 mt-1">{room.description}</p>
-                      )}
                     </div>
                     <Button
                       variant="destructive"

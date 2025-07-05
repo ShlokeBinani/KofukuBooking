@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated } from "./auth";
 import { insertBookingSchema, insertPriorityRequestSchema } from "@shared/schema";
 import { sendBookingConfirmation, sendPriorityRequest } from "./services/emailService";
 
@@ -13,17 +13,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await storage.initializeRooms();
   await storage.initializeTeams();
 
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
+  // Auth routes handled by auth.ts - /api/me, /api/login, /api/logout, /api/register
 
   // Room routes
   app.get('/api/rooms', isAuthenticated, async (req, res) => {
@@ -50,7 +40,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Booking routes
   app.get('/api/bookings', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const bookings = await storage.getUserBookings(userId);
       
       // Get room and user details for each booking
@@ -101,11 +91,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/bookings/create', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const bookingData = { ...req.body, userId };
       
       // Validate the booking data
       const validatedData = insertBookingSchema.parse(bookingData);
+      
+      // Ensure roomId is defined
+      if (!validatedData.roomId) {
+        return res.status(400).json({ message: "Room ID is required" });
+      }
       
       // Double-check availability
       const isAvailable = await storage.checkAvailability(
@@ -145,7 +140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/bookings/cancel/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const bookingId = parseInt(req.params.id);
       
       const success = await storage.cancelBooking(bookingId, userId);
@@ -164,7 +159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Priority request routes
   app.post('/api/bookings/request-priority', isAuthenticated, async (req: any, res) => {
     try {
-      const requesterId = req.user.claims.sub;
+      const requesterId = req.user.id;
       const requestData = { ...req.body, requesterId };
       
       const validatedData = insertPriorityRequestSchema.parse(requestData);
@@ -203,7 +198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin routes - require admin role
   app.get('/api/admin/users', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const currentUser = await storage.getUser(userId);
       
       if (currentUser?.role !== 'admin') {
@@ -220,7 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/admin/users/:userId/role', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const currentUser = await storage.getUser(userId);
       
       if (currentUser?.role !== 'admin') {
@@ -244,7 +239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/admin/users/:userId/status', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const currentUser = await storage.getUser(userId);
       
       if (currentUser?.role !== 'admin') {
@@ -269,7 +264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin notifications
   app.get('/api/admin/notifications', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const currentUser = await storage.getUser(userId);
       
       if (currentUser?.role !== 'admin') {
@@ -286,7 +281,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/admin/notifications/:id/read', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const currentUser = await storage.getUser(userId);
       
       if (currentUser?.role !== 'admin') {
@@ -310,7 +305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin room management
   app.post('/api/admin/rooms', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const currentUser = await storage.getUser(userId);
       
       if (currentUser?.role !== 'admin') {
@@ -327,7 +322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/admin/rooms/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const currentUser = await storage.getUser(userId);
       
       if (currentUser?.role !== 'admin') {
@@ -350,7 +345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/admin/rooms/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const currentUser = await storage.getUser(userId);
       
       if (currentUser?.role !== 'admin') {
