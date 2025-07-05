@@ -184,13 +184,28 @@ export async function setupAuth(app: Express) {
     }
   });
 
-  // Logout route
+  // Logout routes (both GET and POST for compatibility)
+  app.get("/api/logout", (req: any, res: any) => {
+    req.logout((err: any) => {
+      if (err) {
+        console.error('Logout error:', err);
+      }
+      req.session.destroy(() => {
+        res.clearCookie('connect.sid');
+        res.redirect('/');
+      });
+    });
+  });
+
   app.post("/api/logout", (req, res) => {
     req.logout((err) => {
       if (err) {
         return res.status(500).json({ message: 'Logout failed' });
       }
-      res.json({ message: 'Logged out successfully' });
+      req.session.destroy(() => {
+        res.clearCookie('connect.sid');
+        res.json({ message: 'Logged out successfully' });
+      });
     });
   });
 }
